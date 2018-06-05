@@ -80,9 +80,6 @@ load_data <- function() {
   # read csv
   df <- read.csv(file = file.path('./data', filename), stringsAsFactors = FALSE)
   
-  # set date as date
-  df$mrr_date <- as.Date(df$mrr_date, format = '%Y-%m-%d')
-  
   df
 }
 

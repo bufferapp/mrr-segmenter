@@ -40,10 +40,10 @@ Column
 # combine the selected variables into a new data frame
 selected_data <- reactive({
   
-  mrr <- mrr[, c("mrr_date", input$segments, "mrr")]
+  mrr <- mrr[, c("date", input$segments, "mrr")]
   
   groups <- mrr %>% 
-    select(-mrr_date, -mrr)
+    select(-date, -mrr)
   
   group_args <- c(groups, sep="_")
   group_values <- do.call(paste, group_args)
@@ -57,11 +57,11 @@ selected_data <- reactive({
 renderPlot({
   
   p <- selected_data() %>% 
-    group_by(mrr_date, segment) %>% 
+    group_by(date, segment) %>% 
     summarise(mrr = sum(mrr)) %>% 
     ungroup() %>% 
     mutate(segment = reorder(segment, -mrr)) %>% 
-    ggplot(aes_string(x = 'mrr_date', y = 'mrr')) + 
+    ggplot(aes_string(x = 'date', y = 'mrr')) + 
     geom_line() +
     stat_smooth(method = 'loess') +
     facet_wrap(~ segment, scales = "free_y", ncol = 3) +
