@@ -99,6 +99,9 @@ get_mrr_data <- function() {
     save_data(df)
   }
   
+  # set dates 
+  df$date <- as.Date(df$date, format = '%Y-%m-%d')
+  
   # return data frame
   df
 }
