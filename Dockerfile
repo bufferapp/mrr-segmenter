@@ -15,4 +15,4 @@ RUN install2.r --error \
 
 ADD mrrdash.Rmd mrrdash.Rmd
 
-CMD ["R", "-e rmarkdown::run('mrrdash.Rmd')"]
+CMD ["R", "-e rmarkdown::run('mrrdash.Rmd', shiny_args = list(port = 8088))"]
