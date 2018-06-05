@@ -13,6 +13,8 @@ RUN install2.r --error \
     rmarkdown \
   && rm -rf /tmp/downloaded_packages/ /tmp/*.rds
 
-ADD mrrdash.Rmd mrrdash.Rmd
+ADD mrrdash.Rmd mrr_source.R data app/
 
-CMD ["R", "-e rmarkdown::run('mrrdash.Rmd', shiny_args = list(port = 8088))"]
+WORKDIR /app
+
+CMD ["R", "-e rmarkdown::run('mrrdash.Rmd',shiny_args=list(port=3405,host='0.0.0.0'))"]
