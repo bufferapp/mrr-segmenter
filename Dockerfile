@@ -13,7 +13,7 @@ RUN install2.r --error \
     rmarkdown \
   && rm -rf /tmp/downloaded_packages/ /tmp/*.rds
 
-ADD mrrdash.Rmd mrr_source.R data app/
+ADD mrrdash.Rmd mrr_source.R app/
 
 WORKDIR /app
 
