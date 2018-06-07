@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mrr-segmenter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mrr-segmenter
+  template:
+    metadata:
+      labels:
+        app: mrr-segmenter
+    spec:
+      containers:
+        - name: mrr-segmenter
+          image: bufferapp/mrr-segmenter:0.1.0
+          imagePullPolicy: Always
+          ports:
+          - name: shiny-http
+            containerPort: 3405
+          env:
+          - name: REDSHIFT_USER
+            valueFrom:
+              secretKeyRef:
+                name: redshift
+                key: user
+          - name: REDSHIFT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: redshift
+                key: password
+          - name: REDSHIFT_ENDPOINT
+            valueFrom:
+              secretKeyRef:
+                name: redshift
+                key: endpoint
+          - name: REDSHIFT_DB_NAME
+            valueFrom:
+              secretKeyRef:
+                name: redshift
+                key: database
+          - name: REDSHIFT_DB_PORT
+            valueFrom:
+              secretKeyRef:
+                name: redshift
+                key: port
+      imagePullSecrets:
+      - name: dockerhub

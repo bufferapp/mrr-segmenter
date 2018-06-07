@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mrr-segmenter
+  labels:
+    app: mrr-segmenter
+spec:
+  type: NodePort
+  ports:
+  - name: shiny-http
+    port: 80
+    protocol: TCP
+    targetPort: 3405
+  selector:
+    app: mrr-segmenter

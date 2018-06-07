@@ -1,0 +1,8 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: mrr-segmenter-ingress
+spec:
+  backend:
+    serviceName: mrr-segmenter
+    servicePort: 80
