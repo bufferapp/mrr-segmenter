@@ -3,6 +3,7 @@ title: "MRR Segmenter"
 output:
   flexdashboard::flex_dashboard:
     orientation: columns
+    theme: paper
 runtime: shiny
 ---
 
@@ -15,19 +16,21 @@ library(scales)
 source("mrr_source.R")
 
 # get mrr data from Redshift or CSV
-mrr <- get_mrr_data()
+mrr <- get_mrr_data() 
 ```
 
 
 Column {.sidebar}
 -----------------------------------------------------------------------
 
+Choose what to segment MRR by. Total MRR will be grouped by the selected choices so that you can how MRR has changed over time for each combination.
+
 ```{r}
-selectInput('segments', label = 'Segment By',
-              choices = c('Plan Type' = 'simplified_plan_id',
+checkboxGroupInput('segments', label = 'Segment By:',
+                    choices = c('Plan Type' = 'simplified_plan_id',
                           'Billing Interval' = 'billing_interval',
-                          'Gateway' = 'gateway'),
-              selected = c('simplified_plan_id', 'billing_interval', 'gateway'), multiple = TRUE)
+                          'Gateway' = 'gateway'), 
+                   selected = c('simplified_plan_id', 'billing_interval', 'gateway'))
 ```
 
 
@@ -39,16 +42,27 @@ Column
 ```{r}
 # combine the selected variables into a new data frame
 selected_data <- reactive({
-
-  mrr <- mrr[, c("date", input$segments, "mrr")]
-
-  groups <- mrr %>%
+  
+  # if there are no choices checked
+  if (length(input$segments) == 0) {
+    
+    mrr <- mrr %>% 
+      group_by(date) %>% 
+      summarise(mrr = sum(mrr)) %>% 
+      mutate(segment = 'Total MRR (Excluding Manual Payments)')
+    
+  } else {
+    mrr <- mrr[, c("date", input$segments, "mrr")]
+    
+    groups <- mrr %>%
     select(-date, -mrr)
+    
+    group_args <- c(groups, sep="_")
+    group_values <- do.call(paste, group_args)
 
-  group_args <- c(groups, sep="_")
-  group_values <- do.call(paste, group_args)
-
-  mrr$segment <- group_values
+    mrr$segment <- group_values
+    
+  }
 
   mrr
 
@@ -56,7 +70,7 @@ selected_data <- reactive({
 
 renderPlot({
 
-  p <- selected_data() %>%
+  p <- selected_data() %>% 
     group_by(date, segment) %>%
     summarise(mrr = sum(mrr)) %>%
     ungroup() %>%

@@ -44,6 +44,8 @@ get_redshift_data <- function() {
       , sum(total_mrr) as mrr
     from dbt.daily_mrr_values
     where date >= (current_date - 182)
+    and gateway != 'Manual'
+    and simplified_plan_id != 'other'
     and date < (current_date - 2)
     group by 1, 2, 3, 4
     "
