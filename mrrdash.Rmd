@@ -4,6 +4,7 @@ output:
   flexdashboard::flex_dashboard:
     orientation: columns
     theme: paper
+    source_code: embed
 runtime: shiny
 ---
 
@@ -23,7 +24,10 @@ mrr <- get_mrr_data()
 Column {.sidebar}
 -----------------------------------------------------------------------
 
-Choose what to segment MRR by. Total MRR will be grouped by the selected choices so that you can how MRR has changed over time for each combination.
+Choose what to segment MRR by. Total MRR will be grouped by the selected choices so that you can how MRR has changed over time for each combination of choices.
+
+For example, if "Billing Interval" and "Gateway" are selected, the app will display historic MRR for monthly Stripe subscriptions, yearly Stripe subscriptions, monthly Apple subscriptions, yearly Apple subscriptions, etc.
+
 
 ```{r}
 checkboxGroupInput('segments', label = 'Segment By:',
@@ -32,6 +36,8 @@ checkboxGroupInput('segments', label = 'Segment By:',
                           'Gateway' = 'gateway'), 
                    selected = c('simplified_plan_id', 'billing_interval', 'gateway'))
 ```
+
+If you have any questions or issues, please shoot Julian a message or log an issue here: https://github.com/jwinternheimer/mrr-segmenter
 
 
 Column
