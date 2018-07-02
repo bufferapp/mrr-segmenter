@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: mrr-segmenter
-          image: bufferapp/mrr-segmenter:0.1.0
+          image: bufferapp/mrr-segmenter:0.2.0
           imagePullPolicy: Always
           ports:
           - name: shiny-http
