@@ -13,9 +13,6 @@ RUN install2.r --error \
     rmarkdown \
   && rm -rf /tmp/downloaded_packages/ /tmp/*.rds
 
-RUN mkdir -p /etc/shiny-server/
-RUN echo 'sanitize_errors off;disable_protocols xdr-streaming xhr-streaming iframe-eventsource iframe-htmlfile;' >> /etc/shiny-server/shiny-server.conf
-
 ADD mrrdash.Rmd mrr_source.R app/
 
 WORKDIR /app
