@@ -1,4 +1,4 @@
-NAME = bufferapp/mrr-segmenter:0.2.0
+NAME = bufferapp/mrr-segmenter:0.3.0
 
 all: run
 
