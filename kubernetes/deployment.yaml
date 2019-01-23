@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: mrr-segmenter
-          image: bufferapp/mrr-segmenter:0.3.0
+          image: gcr.io/buffer-data/mrr-segmenter:0.4.0
           imagePullPolicy: Always
           ports:
           - name: shiny-http
@@ -45,5 +45,3 @@ spec:
               secretKeyRef:
                 name: redshift
                 key: port
-      imagePullSecrets:
-      - name: dockerhub
