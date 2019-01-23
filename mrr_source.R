@@ -1,6 +1,7 @@
 library(dplyr)
 library(DBI)
 library(RPostgres)
+library(forecast)
 
 # connect to redshift
 redshift_connect <- function() {
@@ -40,24 +41,17 @@ get_redshift_data <- function() {
       date(date) as date
       , gateway
       , simplified_plan_id
-      , billing_cycle as billing_interval
       , sum(total_mrr) as mrr
     from dbt.daily_mrr_values
     where date >= (current_date - 182)
-    and gateway != 'Manual'
-    and simplified_plan_id != 'other'
-    and date < (current_date - 2)
-    group by 1, 2, 3, 4
+    and gateway in ('Stripe', 'Manual') 
+    and date < (current_date - 1)
+    group by 1, 2, 3
     "
 
   # query redshift
   mrr_data <- query_db(mrr_query, con)
 
-  # fix up billing intervals
-  mrr_data <- mrr_data %>%
-    mutate(billing_interval = ifelse(billing_interval == 'Annual' | billing_interval == 'Yearly', 'year',
-                                     ifelse(billing_interval == 'Monthly', 'month',
-                                            ifelse(billing_interval == 'Quarterly', 'year', billing_interval))))
   mrr_data
 }
 
@@ -106,4 +100,72 @@ get_mrr_data <- function() {
 
   # return data frame
   df
+}
+
+# forecast revenue 90 days into the future
+get_forecast_obj <- function(mrr, h = 90, freq = 7) {
+  
+  # arrage data by date
+  df <- mrr %>% arrange(date)
+  
+  # create timeseries object
+  ts <- ts(mrr$point_forecast, frequency = 7)
+  
+  # fit exponential smoothing algorithm to data
+  etsfit <- ets(ts)
+  
+  # get forecast
+  fcast <- forecast(etsfit, h = h, frequency = freq)
+  
+  # convert to a data frame
+  fcast_df <- as.data.frame(fcast)
+  
+  # get the forecast dates
+  fcast_df$date <- seq(max(mrr$date) + 1, max(mrr$date) + h, 1)
+  
+  # rename columns of data frame
+  names(fcast_df) <- c('point_forecast','lo_80','hi_80','lo_95','hi_95', 'date')
+  
+  fcast_df
+
+}
+
+# forecast revenue 90 days into the future
+get_forecast <- function(mrr, h = 90, freq = 7) {
+  
+  # arrage data by date
+  df <- mrr %>% arrange(date)
+  
+  # create timeseries object
+  ts <- ts(mrr$point_forecast, frequency = 7)
+  
+  # fit exponential smoothing algorithm to data
+  etsfit <- ets(ts)
+  
+  # get forecast
+  fcast <- forecast(etsfit, h = h, frequency = freq)
+  
+  # convert to a data frame
+  fcast_df <- as.data.frame(fcast)
+  
+  # get the forecast dates
+  fcast_df$date <- seq(max(mrr$date) + 1, max(mrr$date) + h, 1)
+  
+  # rename columns of data frame
+  names(fcast_df) <- c('point_forecast','lo_80','hi_80','lo_95','hi_95', 'date')
+  
+  # merge data frames
+  mrr_forecast <- rbind(mrr, select(fcast_df, date, point_forecast))
+  
+  # set value as int
+  mrr_forecast$point_forecast <- as.integer(mrr_forecast$point_forecast)
+  
+  # set created_at date
+  mrr_forecast$forecast_created_at <- Sys.time()
+  
+  # rename columns
+  names(mrr_forecast) <- c('forecast_at', 'forecasted_mrr_value', 'forecast_created_at')
+  
+  # return the new data frame
+  mrr_forecast
 }

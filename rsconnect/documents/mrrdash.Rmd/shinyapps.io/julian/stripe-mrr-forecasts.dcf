@@ -1,0 +1,12 @@
+name: stripe-mrr-forecasts
+title: stripe-mrr-forecasts
+username:
+account: julian
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 659827
+bundleId: 1830228
+url: https://julian.shinyapps.io/stripe-mrr-forecasts/
+when: 1548193890.4905
+asMultiple: FALSE
+asStatic: FALSE
