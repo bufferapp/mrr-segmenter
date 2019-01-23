@@ -131,10 +131,28 @@ get_forecast_obj <- function(mrr, h = 90, freq = 7) {
 }
 
 # forecast revenue 90 days into the future
-get_forecast <- function(mrr, h = 90, freq = 7) {
+get_forecast <- function(mrr, h = 90, freq = 7, application) {
   
-  # arrage data by date
-  df <- mrr %>% arrange(date)
+  # filter by application
+  if (application == "publish") {
+    
+    mrr <- mrr %>% 
+      filter(simplified_plan_id != 'reply' & simplified_plan_id != 'analyze') %>% 
+      group_by(date) %>% 
+      summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
+      rename(point_forecast = mrr) %>% 
+      arrange(date)
+    
+  } else {
+    
+    mrr <- mrr %>% 
+      filter(simplified_plan_id == application) %>% 
+      group_by(date) %>% 
+      summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
+      rename(point_forecast = mrr) %>% 
+      arrange(date)
+    
+  }
   
   # create timeseries object
   ts <- ts(mrr$point_forecast, frequency = 7)
@@ -168,4 +186,18 @@ get_forecast <- function(mrr, h = 90, freq = 7) {
   
   # return the new data frame
   mrr_forecast
+}
+
+# get end of month forecast value
+get_eom_value <- function(fc, eom) {
+  eom_fc <- filter(fc, forecast_at == eom)
+  return(dollar(eom_fc[1,]$forecasted_mrr_value))
+}
+
+# get projected growth rate
+get_growth_rate <- function(fc, eom, last_month) {
+  eom_fc <- filter(fc, forecast_at == eom)
+  fc_last_month <- filter(fc, forecast_at == last_month)[1,]$forecasted_mrr_value
+  gr <- eom_fc[1,]$forecasted_mrr_value / fc_last_month - 1
+  return(gr)
 }

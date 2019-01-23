@@ -28,48 +28,23 @@ last_month <- eom %m-% months(1)
 mrr <- get_mrr_data() 
 
 # get publish forecasts
-publish_fc <- mrr %>% 
-  filter(simplified_plan_id != 'reply' & simplified_plan_id != 'analyze') %>% 
-  group_by(date) %>% 
-  summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
-  rename(point_forecast = mrr) %>% 
-  get_forecast()
+publish_fc <- get_forecast(mrr, application = "publish")
 
 # get reply forecasts
-reply_fc <- mrr %>% 
-  filter(simplified_plan_id == 'reply') %>% 
-  group_by(date) %>% 
-  summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
-  rename(point_forecast = mrr) %>% 
-  get_forecast()
+reply_fc <- get_forecast(mrr, application = "reply")
 
 # get analyze forecasts
-analyze_fc <- mrr %>% 
-  filter(simplified_plan_id == 'analyze') %>% 
-  group_by(date) %>% 
-  summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
-  rename(point_forecast = mrr) %>% 
-  get_forecast()
+analyze_fc <- get_forecast(mrr, application = "analyze")
 
 # get end of month forecasts
-publish_eom <- filter(publish_fc, forecast_at == eom)
-publish_eom_forecast <- dollar(publish_eom[1,]$forecasted_mrr_value)
-
-reply_eom <- filter(reply_fc, forecast_at == eom)
-reply_eom_forecast <- dollar(reply_eom[1,]$forecasted_mrr_value)
-
-analyze_eom <- filter(analyze_fc, forecast_at == eom)
-analyze_eom_forecast <- dollar(analyze_eom[1,]$forecasted_mrr_value)
+publish_eom_forecast <- get_eom_value(publish_fc, eom)
+reply_eom_forecast <- get_eom_value(reply_fc, eom)
+analyze_eom_forecast <- get_eom_value(analyze_fc, eom)
 
 # get projected growth rates
-publish_last_month <- filter(publish_fc, forecast_at == last_month)[1,]$forecasted_mrr_value
-publish_gr <- publish_eom[1,]$forecasted_mrr_value / publish_last_month - 1
-
-reply_last_month <- filter(reply_fc, forecast_at == last_month)[1,]$forecasted_mrr_value
-reply_gr <- reply_eom[1,]$forecasted_mrr_value / reply_last_month - 1
-
-analyze_last_month <- filter(analyze_fc, forecast_at == last_month)[1,]$forecasted_mrr_value
-analyze_gr <- analyze_eom[1,]$forecasted_mrr_value / analyze_last_month - 1
+publish_gr <- get_growth_rate(publish_fc, eom, last_month)
+reply_gr <- get_growth_rate(reply_fc, eom, last_month)
+analyze_gr <- get_growth_rate(analyze_fc, eom, last_month)
 ```
 
 
