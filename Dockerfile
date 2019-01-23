@@ -7,9 +7,12 @@ RUN install2.r --error \
     DBI \
     RPostgres \
     ggplot2 \
+    plotly \
     scales \
     shiny \
     flexdashboard \
+    forecast \
+    lubridate \
     rmarkdown \
   && rm -rf /tmp/downloaded_packages/ /tmp/*.rds
 

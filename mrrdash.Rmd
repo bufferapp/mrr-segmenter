@@ -1,9 +1,8 @@
 ---
-title: "MRR Segmenter"
+title: "Stripe MRR Forecasts"
 output:
   flexdashboard::flex_dashboard:
-    orientation: columns
-    theme: paper
+    orientation: rows
     source_code: embed
 runtime: shiny
 ---
@@ -11,84 +10,227 @@ runtime: shiny
 ```{r setup, include = FALSE}
 library(flexdashboard)
 library(ggplot2)
+library(plotly)
 library(scales)
+library(lubridate)
 
 # access helper functions
 source("mrr_source.R")
 
-# get mrr data from Redshift or CSV
+# get end of month
+eom <- Sys.Date()
+day(eom) <- days_in_month(eom)
+
+# get end of last month
+last_month <- eom %m-% months(1)
+
+# get mrr data 
 mrr <- get_mrr_data() 
+
+# get publish forecasts
+publish_fc <- mrr %>% 
+  filter(simplified_plan_id != 'reply' & simplified_plan_id != 'analyze') %>% 
+  group_by(date) %>% 
+  summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
+  rename(point_forecast = mrr) %>% 
+  get_forecast()
+
+# get reply forecasts
+reply_fc <- mrr %>% 
+  filter(simplified_plan_id == 'reply') %>% 
+  group_by(date) %>% 
+  summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
+  rename(point_forecast = mrr) %>% 
+  get_forecast()
+
+# get analyze forecasts
+analyze_fc <- mrr %>% 
+  filter(simplified_plan_id == 'analyze') %>% 
+  group_by(date) %>% 
+  summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
+  rename(point_forecast = mrr) %>% 
+  get_forecast()
+
+# get end of month forecasts
+publish_eom <- filter(publish_fc, forecast_at == eom)
+publish_eom_forecast <- dollar(publish_eom[1,]$forecasted_mrr_value)
+
+reply_eom <- filter(reply_fc, forecast_at == eom)
+reply_eom_forecast <- dollar(reply_eom[1,]$forecasted_mrr_value)
+
+analyze_eom <- filter(analyze_fc, forecast_at == eom)
+analyze_eom_forecast <- dollar(analyze_eom[1,]$forecasted_mrr_value)
+
+# get projected growth rates
+publish_last_month <- filter(publish_fc, forecast_at == last_month)[1,]$forecasted_mrr_value
+publish_gr <- publish_eom[1,]$forecasted_mrr_value / publish_last_month - 1
+
+reply_last_month <- filter(reply_fc, forecast_at == last_month)[1,]$forecasted_mrr_value
+reply_gr <- reply_eom[1,]$forecasted_mrr_value / reply_last_month - 1
+
+analyze_last_month <- filter(analyze_fc, forecast_at == last_month)[1,]$forecasted_mrr_value
+analyze_gr <- analyze_eom[1,]$forecasted_mrr_value / analyze_last_month - 1
 ```
 
 
-Column {.sidebar}
+Row
 -----------------------------------------------------------------------
 
-Choose what to segment MRR by. Total MRR will be grouped by the selected choices so that you can how MRR has changed over time for each combination of choices.
-
-For example, if "Billing Interval" and "Gateway" are selected, the app will display historic MRR for monthly Stripe subscriptions, yearly Stripe subscriptions, monthly Apple subscriptions, yearly Apple subscriptions, etc.
-
+### Publish End of Month Forecast
 
 ```{r}
-checkboxGroupInput('segments', label = 'Segment By:',
-                    choices = c('Plan Type' = 'simplified_plan_id',
-                          'Billing Interval' = 'billing_interval',
-                          'Gateway' = 'gateway'), 
-                   selected = c('simplified_plan_id', 'billing_interval', 'gateway'))
-```
-
-If you have any questions or issues, please shoot Julian a message or log an issue here: https://github.com/jwinternheimer/mrr-segmenter
-
-
-Column
------------------------------------------------------------------------
-
-### MRR Plot
-
-```{r}
-# combine the selected variables into a new data frame
-selected_data <- reactive({
-  
-  # if there are no choices checked
-  if (length(input$segments) == 0) {
-    
-    mrr <- mrr %>% 
-      group_by(date) %>% 
-      summarise(mrr = sum(mrr)) %>% 
-      mutate(segment = 'Total MRR (Excluding Manual Payments)')
-    
-  } else {
-    mrr <- mrr[, c("date", input$segments, "mrr")]
-    
-    groups <- mrr %>%
-    select(-date, -mrr)
-    
-    group_args <- c(groups, sep="_")
-    group_values <- do.call(paste, group_args)
-
-    mrr$segment <- group_values
-    
-  }
-
-  mrr
-
+# publish forecast
+renderValueBox({
+  valueBox(
+    value = publish_eom_forecast,
+    icon = "fa-bars"
+  )
 })
+```
 
-renderPlot({
+### Reply End of Month Forecast
 
-  p <- selected_data() %>% 
-    group_by(date, segment) %>%
-    summarise(mrr = sum(mrr)) %>%
-    ungroup() %>%
-    mutate(segment = reorder(segment, -mrr)) %>%
-    ggplot(aes_string(x = 'date', y = 'mrr')) +
-    geom_line() +
-    stat_smooth(method = 'loess') +
-    facet_wrap(~ segment, scales = "free_y", ncol = 3) +
+```{r}
+# reply forecast
+renderValueBox({
+  valueBox(
+    value = reply_eom_forecast,
+    icon = "fa-exchange-alt"
+  )
+})
+```
+
+### Analyze End of Month Forecast
+
+```{r}
+# analyze forecast
+renderValueBox({
+  valueBox(
+    value = analyze_eom_forecast,
+    icon = "fa-chart-line"
+  )
+})
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Publish Projected Growth Rate
+
+```{r}
+# publish forecast
+renderValueBox({
+  valueBox(
+    value = percent(publish_gr),
+    icon = "fa-bars",
+    color = ifelse(publish_gr > 0.01, "success",
+                   ifelse(publish_gr > 0.005, "warning", "danger"))
+  )
+})
+```
+
+### Reply Projected Growth Rate
+
+```{r}
+# reply forecast
+renderValueBox({
+  valueBox(
+    value = percent(reply_gr),
+    icon = "fa-exchange-alt",
+    color = ifelse(reply_gr > 0.05, "success",
+                   ifelse(reply_gr > 0.03, "warning", "danger"))
+  )
+})
+```
+
+### Analyze Projected Growth Rate
+
+```{r}
+# analyze forecast
+renderValueBox({
+  valueBox(
+    value = percent(analyze_gr),
+    icon = "fa-chart-line",
+    color = ifelse(analyze_gr > 0.4, "success",
+                   ifelse(analyze_gr > 0.2, "warning", "danger"))
+  )
+})
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Publish Forecast
+
+```{r}
+# publish forecast plot
+renderPlotly({
+
+  pub_fc <- mrr %>% 
+    filter(simplified_plan_id != 'reply' & simplified_plan_id != 'analyze') %>% 
+    group_by(date) %>% 
+    summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
+    rename(point_forecast = mrr) %>% 
+    get_forecast_obj()
+  
+  p <- ggplot() +
+    geom_line(data = publish_fc, aes(x = forecast_at, y = forecasted_mrr_value)) +
+    geom_line(data = pub_fc, aes(x = date, y = point_forecast), color = 'blue') +
+    geom_ribbon(data = pub_fc, aes(x = date, ymin = lo_95, ymax = hi_95), fill = "grey70", alpha = 0.8) +
     scale_y_continuous(labels = dollar) +
-    labs(x = NULL, y = NULL, title = NULL) +
-    theme(legend.position = "none")
-  p
+    labs(x = NULL, y = NULL, title = NULL)
+  
+  ggplotly(p) 
+  
+})
+```
 
+### Reply Forecast
+
+```{r}
+# publish forecast plot
+renderPlotly({
+
+  rep_fc <- mrr %>% 
+    filter(simplified_plan_id == 'reply') %>% 
+    group_by(date) %>% 
+    summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
+    rename(point_forecast = mrr) %>% 
+    get_forecast_obj()
+  
+  p <- ggplot() +
+    geom_line(data = reply_fc, aes(x = forecast_at, y = forecasted_mrr_value)) +
+    geom_line(data = rep_fc, aes(x = date, y = point_forecast), color = 'blue') +
+    geom_ribbon(data = rep_fc, aes(x = date, ymin = lo_95, ymax = hi_95), fill = "grey70", alpha = 0.8) +
+    scale_y_continuous(labels = dollar) +
+    labs(x = NULL, y = NULL, title = NULL)
+  
+  ggplotly(p) 
+  
+})
+```
+
+### Analyze Forecast
+
+```{r}
+# publish forecast plot
+renderPlotly({
+
+  ana_fc <- mrr %>% 
+    filter(simplified_plan_id == 'analyze') %>% 
+    group_by(date) %>% 
+    summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
+    rename(point_forecast = mrr) %>% 
+    get_forecast_obj()
+  
+  p <- ggplot() +
+    geom_line(data = analyze_fc, aes(x = forecast_at, y = forecasted_mrr_value)) +
+    geom_line(data = ana_fc, aes(x = date, y = point_forecast), color = 'blue') +
+    geom_ribbon(data = ana_fc, aes(x = date, ymin = lo_95, ymax = hi_95), fill = "grey70", alpha = 0.8) +
+    scale_y_continuous(labels = dollar) +
+    labs(x = NULL, y = NULL, title = NULL)
+  
+  ggplotly(p) 
+  
 })
 ```
