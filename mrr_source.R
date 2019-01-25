@@ -63,7 +63,7 @@ save_data <- function(df) {
   filename <- sprintf("%s_%s.csv", as.character(Sys.Date()), 'mrr')
 
   # Write the file to the local system
-  write.csv(df, file = file.path('.', filename), row.names = FALSE)
+  write.csv(df, file = file.path('~', filename), row.names = FALSE)
 }
 
 
@@ -74,7 +74,7 @@ load_data <- function() {
   filename <- sprintf("%s_%s.csv", as.character(Sys.Date()), 'mrr')
 
   # read csv
-  df <- read.csv(file = file.path('.', filename), stringsAsFactors = FALSE)
+  df <- read.csv(file = file.path('~', filename), stringsAsFactors = FALSE)
 
   df
 }
@@ -85,7 +85,7 @@ get_mrr_data <- function() {
 
   # get filename
   filename <- sprintf("%s_%s.csv", as.character(Sys.Date()), 'mrr')
-  file = file.path('.', filename)
+  file = file.path('~', filename)
 
   # check if file exists
   if (file.exists(file)) {
