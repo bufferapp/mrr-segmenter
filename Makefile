@@ -6,13 +6,13 @@ build:
 	docker build -t $(NAME) .
 
 run: build
-	docker run -it -p 3405:3405 --rm --env-file .env $(NAME)
+	docker run -it -p 3838:3838 --rm --env-file .env $(NAME)
 
 push: build
 	docker push $(NAME)
 
 dev: build
-	docker run -v $(PWD):/app -it -p 3405:3405 --rm --env-file .env $(NAME) bash
+	docker run -v $(PWD):/srv/shiny-server -it -p 3838:3838 --rm --env-file .env $(NAME) bash
 
 deploy: push
 	kubectl apply -f kubernetes/
