@@ -10,6 +10,6 @@ spec:
   - name: shiny-http
     port: 80
     protocol: TCP
-    targetPort: 3405
+    targetPort: 3838
   selector:
     app: mrr-segmenter
