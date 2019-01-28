@@ -6,7 +6,7 @@ build:
 	docker build -t $(NAME) .
 
 run: build
-	docker run -it -p 3838:3838 --network host --rm --env-file .env $(NAME)
+	docker run -it -p 3838:3838 --rm --env-file .env $(NAME)
 
 push: build
 	docker push $(NAME)

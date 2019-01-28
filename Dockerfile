@@ -1,4 +1,3 @@
-
 FROM r-base:latest
 
 # Install dependencies and Download and install shiny server
@@ -33,7 +32,7 @@ RUN install2.r --error \
     lubridate \
     rmarkdown \
   && rm -rf /tmp/downloaded_packages/ /tmp/*.rds \
-  && rm /srv/shiny-server/index.html 
+  && rm /srv/shiny-server/index.html
 
 EXPOSE 3838
 
