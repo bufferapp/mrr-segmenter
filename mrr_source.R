@@ -40,13 +40,14 @@ get_redshift_data <- function() {
     select
       date(date) as date
       , gateway
+      , plan_id
       , simplified_plan_id
       , sum(total_mrr) as mrr
     from dbt.daily_mrr_values
     where date >= (current_date - 182)
     and gateway in ('Stripe', 'Manual') 
     and date < (current_date - 1)
-    group by 1, 2, 3
+    group by 1, 2, 3, 4
     "
 
   # query redshift
@@ -106,7 +107,8 @@ get_mrr_data <- function() {
 get_forecast_obj <- function(mrr, h = 90, freq = 7) {
   
   # arrage data by date
-  df <- mrr %>% arrange(date)
+  df <- mrr %>% 
+    arrange(date)
   
   # create timeseries object
   ts <- ts(mrr$point_forecast, frequency = 7)
