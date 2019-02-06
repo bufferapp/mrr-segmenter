@@ -47,6 +47,8 @@ reply_gr <- get_growth_rate(reply_fc, eom, last_month)
 analyze_gr <- get_growth_rate(analyze_fc, eom, last_month)
 ```
 
+All of Buffer
+=======================================================================
 
 Row
 -----------------------------------------------------------------------
@@ -202,6 +204,111 @@ renderPlotly({
     geom_line(data = analyze_fc, aes(x = forecast_at, y = forecasted_mrr_value)) +
     geom_line(data = ana_fc, aes(x = date, y = point_forecast), color = 'blue') +
     geom_ribbon(data = ana_fc, aes(x = date, ymin = lo_95, ymax = hi_95), fill = "grey70", alpha = 0.8) +
+    scale_y_continuous(labels = dollar) +
+    labs(x = NULL, y = NULL, title = NULL)
+  
+  ggplotly(p) 
+  
+})
+```
+
+
+Analyze
+=======================================================================
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+Select the Analyze plans to include in the forecasts. 
+
+```{r}
+selectInput(inputId = "analyze_plans", 
+            label = "Analyze plans",
+            multiple = TRUE,
+            choices = c("analyze-early-access-10-profiles",
+                        "analyze-early-access-25-profiles",
+                        "analyze-early-access-50-profiles",
+                        "analyze-early-access-100-profiles",
+                        "analyze-early-access-10-profiles-annual",
+                        "analyze-early-access-200-profiles"), 
+            selected = c("analyze-early-access-10-profiles",
+                        "analyze-early-access-25-profiles",
+                        "analyze-early-access-50-profiles",
+                        "analyze-early-access-100-profiles",
+                        "analyze-early-access-10-profiles-annual",
+                        "analyze-early-access-200-profiles"))
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Analyze End of Month Forecast
+
+```{r}
+# analyze forecast
+renderValueBox({
+  
+  # get analyze forecasts
+  analyze_fc <- mrr %>% 
+    filter(plan_id %in% input$analyze_plans) %>% 
+    get_forecast(application = "analyze")
+
+  # get end of month forecasts
+  analyze_eom_forecast <- get_eom_value(analyze_fc, eom)
+  
+  valueBox(
+    value = analyze_eom_forecast,
+    icon = "fa-chart-line"
+  )
+})
+```
+
+### Analyze Projected EoM Growth Rate
+
+```{r}
+# analyze forecast
+renderValueBox({
+  
+  # get analyze forecasts
+  analyze_fc <- mrr %>% 
+    filter(plan_id %in% input$analyze_plans) %>% 
+    get_forecast(application = "analyze")
+  
+  # get projected growth rate
+  analyze_gr <- get_growth_rate(analyze_fc, eom, last_month)
+  
+  valueBox(
+    value = percent(analyze_gr),
+    icon = "fa-chart-line",
+    color = ifelse(analyze_gr > 0.4, "success", ifelse(analyze_gr > 0.2, "warning", "danger"))
+  )
+})
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Analyze Revenue Forecasts
+
+```{r}
+# publish forecast plot
+renderPlotly({
+
+  analyze_fc <- mrr %>% 
+    filter(plan_id %in% input$analyze_plans) %>% 
+    get_forecast(application = "analyze")
+    
+  analyze_fc_object <- mrr %>% 
+    filter(plan_id %in% input$analyze_plans) %>% 
+    group_by(date) %>% 
+    summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
+    rename(point_forecast = mrr) %>% 
+    get_forecast_obj()
+  
+  p <- ggplot() +
+    geom_line(data = analyze_fc, aes(x = forecast_at, y = forecasted_mrr_value)) +
+    geom_line(data = analyze_fc_object, aes(x = date, y = point_forecast), color = 'blue') +
+    geom_ribbon(data = analyze_fc_object, aes(x = date, ymin = lo_95, ymax = hi_95), fill = "grey70", alpha = 0.8) +
     scale_y_continuous(labels = dollar) +
     labs(x = NULL, y = NULL, title = NULL)
   
