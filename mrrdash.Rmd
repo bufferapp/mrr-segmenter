@@ -1,5 +1,5 @@
 ---
-title: "Stripe MRR Forecasts"
+title: "MRR Forecasts"
 output:
   flexdashboard::flex_dashboard:
     orientation: rows
@@ -241,6 +241,26 @@ selectInput(inputId = "analyze_plans",
 
 Row
 -----------------------------------------------------------------------
+
+### Current MRR
+
+```{r}
+# analyze forecast
+renderValueBox({
+  
+  # get max date
+  last_date = max(mrr$date)
+  
+  # get analyze forecasts
+  analyze <- mrr %>% 
+    filter(plan_id %in% input$analyze_plans & date == last_date) 
+  
+  valueBox(
+    value = dollar(round(sum(analyze$mrr), 0)),
+    icon = "fa-dollar-sign"
+  )
+})
+```
 
 ### Analyze End of Month Forecast
 
