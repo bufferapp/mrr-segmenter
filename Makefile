@@ -1,4 +1,4 @@
-NAME = gcr.io/buffer-data/mrr-segmenter:0.5.1
+NAME = gcr.io/buffer-data/mrr-segmenter:0.5.2
 
 all: run
 
