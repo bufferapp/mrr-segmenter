@@ -11,9 +11,9 @@ RUN apt-get update && apt-get install -y -t unstable \
     libssl-dev \
     libpq-dev \
     libxt-dev && \
-    wget --no-verbose https://s3.amazonaws.com/rstudio-shiny-server-os-build/ubuntu-12.04/x86_64/VERSION -O "version.txt" && \
+    wget --no-verbose https://rstudio-shiny-server-os-build.s3.amazonaws.com/ubuntu-12.04/x86_64/VERSION -O "version.txt" && \
     VERSION=$(cat version.txt)  && \
-    wget --no-verbose "https://s3.amazonaws.com/rstudio-shiny-server-os-build/ubuntu-12.04/x86_64/shiny-server-$VERSION-amd64.deb" -O ss-latest.deb && \
+    wget --no-verbose "https://rstudio-shiny-server-os-build.s3.amazonaws.com/ubuntu-12.04/x86_64/shiny-server-$VERSION-amd64.deb" -O ss-latest.deb && \
     gdebi -n ss-latest.deb && \
     rm -f version.txt ss-latest.deb && \
     rm -rf /var/lib/apt/lists/*
