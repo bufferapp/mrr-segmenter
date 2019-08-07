@@ -5,8 +5,8 @@ account: julian
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1072941
-bundleId: 2298430
+bundleId: 2298958
 url: https://julian.shinyapps.io/mrr-segmenter/
-when: 1565188860.52583
+when: 1565201747.64181
 asMultiple: FALSE
 asStatic: FALSE

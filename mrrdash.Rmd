@@ -13,17 +13,42 @@ library(flexdashboard)
 library(ggplot2)
 library(plotly)
 library(scales)
+library(shiny)
 
 # get helper functions
 source("mrr_source.R")
 
-# get mrr data 
-mrr <- get_mrr_data(start_date = "2019-01-01", end_date = as.character(Sys.Date()))
+# get mrr
+dataInput <- reactive({
+  
+  # get mrr data 
+  get_mrr_data(start_date = input$date_range[1], end_date = input$date_range[2])
+  
+})
+```
 
-# set mrr and date values
-mrr <- mrr %>% 
-  mutate(date = as.Date(date, format = "%Y-%m-%d"),
-         mrr = mrr / 100)
+Row {data-height=100}
+-----------------------------------------------------------------------
+
+```{r}
+dateRangeInput("date_range", "Date range:",
+                 start  = "2019-01-01",
+                 end    = as.character(Sys.Date()),
+                 min    = "2017-01-01",
+                 max    = as.character(Sys.Date()),
+                 format = "yyyy-mm-dd",
+                 separator = " - ")
+```
+
+```{r}
+selectInput("type", label = "MRR Type",
+            choices = c("Total" = "total", 
+                        "New" = "new",
+                        "Reactivation" = "reactivation", 
+                        "Expansion" = "expansion", 
+                        "Contraction" = "contraction", 
+                        "Churn" = "churn"),
+            selected = "total")
 ```
 
 Row
@@ -35,9 +60,9 @@ Row
 # publish forecast plot
 renderPlotly({
 
-  p <- mrr %>% 
+  p <- dataInput() %>% 
     group_by(date) %>% 
-    summarise(mrr = sum(mrr)) %>% 
+    summarise(mrr = sum(get(input$type))) %>% 
     ggplot(aes(x = date, y = mrr)) +
     geom_line() +
     stat_smooth(method = "loess") +
@@ -56,9 +81,9 @@ renderPlotly({
 # publish forecast plot
 renderPlotly({
 
-  p <- mrr %>% 
+  p <- dataInput() %>% 
     filter(plan == "pro") %>% 
-    ggplot(aes(x = date, y = mrr)) +
+    ggplot(aes(x = date, y = get(input$type))) +
     geom_line() +
     stat_smooth(method = "loess") +
     theme_minimal() +
@@ -75,9 +100,9 @@ renderPlotly({
 ```{r}
 renderPlotly({
 
-  p <- mrr %>% 
+  p <- dataInput() %>% 
     filter(plan == "premium") %>% 
-    ggplot(aes(x = date, y = mrr)) +
+    ggplot(aes(x = date, y = get(input$type))) +
     geom_line() +
     stat_smooth(method = "loess") +
     theme_minimal() +
@@ -97,9 +122,9 @@ Row
 ```{r}
 renderPlotly({
 
-  p <- mrr %>% 
+  p <- dataInput() %>% 
     filter(plan == "small business v2") %>% 
-    ggplot(aes(x = date, y = mrr)) +
+    ggplot(aes(x = date, y = get(input$type))) +
     geom_line() +
     stat_smooth(method = "loess") +
     theme_minimal() +
@@ -116,9 +141,9 @@ renderPlotly({
 ```{r}
 renderPlotly({
 
-  p <- mrr %>% 
+  p <- dataInput() %>% 
     filter(plan == "medium business v2") %>% 
-    ggplot(aes(x = date, y = mrr)) +
+    ggplot(aes(x = date, y = get(input$type))) +
     geom_line() +
     stat_smooth(method = "loess") +
     theme_minimal() +
@@ -135,9 +160,9 @@ renderPlotly({
 ```{r}
 renderPlotly({
 
-  p <- mrr %>% 
+  p <- dataInput() %>% 
     filter(plan == "large business v2") %>% 
-    ggplot(aes(x = date, y = mrr)) +
+    ggplot(aes(x = date, y = get(input$type))) +
     geom_line() +
     stat_smooth(method = "loess") +
     theme_minimal() +

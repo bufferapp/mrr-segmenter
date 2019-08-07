@@ -1,6 +1,7 @@
 library(httr)
 library(jsonlite)
 library(dplyr)
+library(tidyr)
 
 
 get_mrr_metrics <- function(metric = "all", start_date, end_date, interval = "month", plans = NULL) {
@@ -32,10 +33,10 @@ get_mrr_metrics <- function(metric = "all", start_date, end_date, interval = "mo
 }
 
 # function to get data
-get_mrr_data <- function(start_date, end_date, interval = "day", plans = NULL) {
+get_mrr_data <- function(start_date, end_date, interval = "week", plans = NULL) {
   
   # unique file name
-  filename <- sprintf("%s_%s.rds", as.character(Sys.Date()), 'mrr')
+  filename <- sprintf("%s_%s_%s.rds", start_date, end_date, 'mrr')
   
   # check if data already exists
   if (file.exists(filename)) {
@@ -74,6 +75,18 @@ get_mrr_data <- function(start_date, end_date, interval = "day", plans = NULL) {
       rbind(small) %>% 
       rbind(medium) %>% 
       rbind(large)
+    
+    # rename columns
+    all <- all %>% 
+      rename(total = mrr,
+             new = `mrr-new-business`,
+             expansion = `mrr-expansion`,
+             contraction = `mrr-contraction`,
+             churn = `mrr-churn`,
+             reactivation = `mrr-reactivation`) %>% 
+      mutate(date = as.Date(date)) %>% 
+      mutate_if(is.numeric, funs(. / 100)) %>% 
+      filter(date != min(date) & date != max(date))
     
     # save data to csv
     saveRDS(all, file = filename)
