@@ -1,0 +1,12 @@
+name: mrr-segmenter
+title: mrr-segmenter
+username:
+account: julian
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1072941
+bundleId: 2298430
+url: https://julian.shinyapps.io/mrr-segmenter/
+when: 1565188860.52583
+asMultiple: FALSE
+asStatic: FALSE

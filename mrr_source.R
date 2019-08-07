@@ -1,205 +1,86 @@
+library(httr)
+library(jsonlite)
 library(dplyr)
-library(DBI)
-library(RPostgres)
-library(forecast)
 
-# connect to redshift
-redshift_connect <- function() {
 
-  if(Sys.getenv("REDSHIFT_USER") == "" | Sys.getenv("REDSHIFT_PASSWORD") == "") {
-    user <- readline(prompt="Enter your Redshift user: ")
-    pwd <- readline(prompt="Enter your Redshift password: ")
-    Sys.setenv(REDSHIFT_USER = user)
-    Sys.setenv(REDSHIFT_PASSWORD = pwd)
-  }
-
-  con <- dbConnect(RPostgres::Postgres(),
-                   host=Sys.getenv("REDSHIFT_ENDPOINT"),
-                   port=Sys.getenv("REDSHIFT_DB_PORT"),
-                   dbname=Sys.getenv("REDSHIFT_DB_NAME"),
-                   user=Sys.getenv("REDSHIFT_USER"),
-                   password=Sys.getenv("REDSHIFT_PASSWORD"))
-
-  con
+get_mrr_metrics <- function(metric = "all", start_date, end_date, interval = "month", plans = NULL) {
+  
+  require(httr)
+  require(jsonlite)
+  
+  token = Sys.getenv("CHARTMOGUL_API_TOKEN")
+  secret = Sys.getenv("CHARTMOGUL_API_SECRET")
+  
+  base_url = paste0("https://api.chartmogul.com/v1/metrics/", metric)
+  
+  print(paste("Getting data from:", base_url))
+  
+  r <- GET(base_url,
+           query = list(`start-date` = start_date,
+                        `end-date` = end_date,
+                        `interval` = interval,
+                        `plans` = plans),
+           authenticate(token, secret))
+  
+  stop_for_status(r)
+  
+  res_txt <- content(r, type = "text", encoding = "UTF-8")
+  results <- fromJSON(res_txt)
+  results_df <- results$entries
+  
+  results_df
 }
-
-# function to query database
-query_db <- function(query, connection) {
-  results <- dbGetQuery(connection, query)
-  results
-}
-
-# get data from Redshift
-get_redshift_data <- function() {
-
-  # connect to redshift
-  con <- redshift_connect()
-
-  # define mrr query
-  mrr_query <- "
-    select
-      date(date) as date
-      , gateway
-      , plan_id
-      , simplified_plan_id
-      , sum(total_mrr) as mrr
-    from dbt.daily_mrr_values
-    where date >= (current_date - 182)
-    and gateway in ('Stripe', 'Manual') 
-    and date < (current_date - 1)
-    group by 1, 2, 3, 4
-    "
-
-  # query redshift
-  mrr_data <- query_db(mrr_query, con)
-
-  mrr_data
-}
-
-
-# function to save data
-save_data <- function(df) {
-
-  # create a unique file name
-  filename <- sprintf("%s_%s.csv", as.character(Sys.Date()), 'mrr')
-
-  # Write the file to the local system
-  write.csv(df, file = file.path('~', filename), row.names = FALSE)
-}
-
-
-# function to read data
-load_data <- function() {
-
-  # get filename
-  filename <- sprintf("%s_%s.csv", as.character(Sys.Date()), 'mrr')
-
-  # read csv
-  df <- read.csv(file = file.path('~', filename), stringsAsFactors = FALSE)
-
-  df
-}
-
 
 # function to get data
-get_mrr_data <- function() {
-
-  # get filename
-  filename <- sprintf("%s_%s.csv", as.character(Sys.Date()), 'mrr')
-  file = file.path('~', filename)
-
-  # check if file exists
-  if (file.exists(file)) {
-    df <- load_data()
-  } else {
-    df <- get_redshift_data()
-    save_data(df)
-  }
-
-  # set dates
-  df$date <- as.Date(df$date, format = '%Y-%m-%d')
-
-  # return data frame
-  df
-}
-
-# forecast revenue 90 days into the future
-get_forecast_obj <- function(mrr, h = 90, freq = 7) {
+get_mrr_data <- function(start_date, end_date, interval = "day", plans = NULL) {
   
-  # arrage data by date
-  df <- mrr %>% 
-    arrange(date)
+  # unique file name
+  filename <- sprintf("%s_%s.rds", as.character(Sys.Date()), 'mrr')
   
-  # create timeseries object
-  ts <- ts(mrr$point_forecast, frequency = 7)
-  
-  # fit exponential smoothing algorithm to data
-  etsfit <- ets(ts)
-  
-  # get forecast
-  fcast <- forecast(etsfit, h = h, frequency = freq)
-  
-  # convert to a data frame
-  fcast_df <- as.data.frame(fcast)
-  
-  # get the forecast dates
-  fcast_df$date <- seq(max(mrr$date) + 1, max(mrr$date) + h, 1)
-  
-  # rename columns of data frame
-  names(fcast_df) <- c('point_forecast','lo_80','hi_80','lo_95','hi_95', 'date')
-  
-  fcast_df
-
-}
-
-# forecast revenue 90 days into the future
-get_forecast <- function(mrr, h = 90, freq = 7, application) {
-  
-  # filter by application
-  if (application == "publish") {
+  # check if data already exists
+  if (file.exists(filename)) {
     
-    mrr <- mrr %>% 
-      filter(simplified_plan_id != 'reply' & simplified_plan_id != 'analyze') %>% 
-      group_by(date) %>% 
-      summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
-      rename(point_forecast = mrr) %>% 
-      arrange(date)
+    print("Data already exists. Reading it from RDS file.")
+    all <- readRDS(filename)
     
   } else {
     
-    mrr <- mrr %>% 
-      filter(simplified_plan_id == application) %>% 
-      group_by(date) %>% 
-      summarise(mrr = sum(mrr, na.rm = TRUE)) %>% 
-      rename(point_forecast = mrr) %>% 
-      arrange(date)
+    # list the plan names
+    pro_plans <- "Pro8 v1 - Monthly,Pro8, v1 - Yearly"
+    premium_plans <- "Premium Business v1 - Monthly - Monthly,Premium Business v1 - Yearly - Yearly"
+    small_plans <- "Small Business v2 - Monthly,Small Business v2 - Yearly"
+    medium_plans <- "Medium Business v2 - Monthly,Medium Business v2 - Yearly"
+    large_plans <- "Large Business v2 - Monthly,Large Business v2 - Yearly"
+    
+    # get mrr data for each plan group
+    pro <- get_mrr_metrics(metric = "mrr", start_date, end_date, interval, plans = pro_plans) %>% 
+      mutate(plan = "pro")
+    
+    premium <- get_mrr_metrics(metric = "mrr", start_date, end_date, interval, plans = premium_plans) %>% 
+      mutate(plan = "premium")
+    
+    small <- get_mrr_metrics(metric = "mrr", start_date, end_date, interval, plans = small_plans) %>% 
+      mutate(plan = "small business v2")
+    
+    medium <- get_mrr_metrics(metric = "mrr", start_date, end_date, interval, plans = medium_plans) %>% 
+      mutate(plan = "medium business v2")
+    
+    large <- get_mrr_metrics(metric = "mrr", start_date, end_date, interval, plans = large_plans) %>% 
+      mutate(plan = "large business v2")
+    
+    # merge dataframes
+    all <- pro %>% 
+      rbind(premium) %>% 
+      rbind(small) %>% 
+      rbind(medium) %>% 
+      rbind(large)
+    
+    # save data to csv
+    saveRDS(all, file = filename)
     
   }
   
-  # create timeseries object
-  ts <- ts(mrr$point_forecast, frequency = 7)
-  
-  # fit exponential smoothing algorithm to data
-  etsfit <- ets(ts)
-  
-  # get forecast
-  fcast <- forecast(etsfit, h = h, frequency = freq)
-  
-  # convert to a data frame
-  fcast_df <- as.data.frame(fcast)
-  
-  # get the forecast dates
-  fcast_df$date <- seq(max(mrr$date) + 1, max(mrr$date) + h, 1)
-  
-  # rename columns of data frame
-  names(fcast_df) <- c('point_forecast','lo_80','hi_80','lo_95','hi_95', 'date')
-  
-  # merge data frames
-  mrr_forecast <- rbind(mrr, select(fcast_df, date, point_forecast))
-  
-  # set value as int
-  mrr_forecast$point_forecast <- as.integer(mrr_forecast$point_forecast)
-  
-  # set created_at date
-  mrr_forecast$forecast_created_at <- Sys.time()
-  
-  # rename columns
-  names(mrr_forecast) <- c('forecast_at', 'forecasted_mrr_value', 'forecast_created_at')
-  
-  # return the new data frame
-  mrr_forecast
+  # return dataframe
+  return(all)
 }
 
-# get end of month forecast value
-get_eom_value <- function(fc, eom) {
-  eom_fc <- filter(fc, forecast_at == eom)
-  return(dollar(eom_fc[1,]$forecasted_mrr_value))
-}
-
-# get projected growth rate
-get_growth_rate <- function(fc, eom, last_month) {
-  eom_fc <- filter(fc, forecast_at == eom)
-  fc_last_month <- filter(fc, forecast_at == last_month)[1,]$forecasted_mrr_value
-  gr <- eom_fc[1,]$forecasted_mrr_value / fc_last_month - 1
-  return(gr)
-}
